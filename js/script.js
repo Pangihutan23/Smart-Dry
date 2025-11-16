@@ -41,6 +41,28 @@ class SmartDryApp {
         
         this.updateConnectionStatus(false, 'Connecting...');
         this.handleHashChange();
+        
+        // Update time every second
+        setInterval(() => this.updateCurrentTime(), 1000);
+        this.updateCurrentTime();
+    }
+
+    updateCurrentTime() {
+        const now = new Date();
+        const timeString = now.toLocaleString('id-ID', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        
+        const timeElement = document.getElementById('current-time');
+        if (timeElement) {
+            timeElement.textContent = timeString;
+        }
     }
 
     setupHashNavigation() {
@@ -52,7 +74,7 @@ class SmartDryApp {
 
     handleHashChange() {
         const hash = window.location.hash.substring(1); // Remove # symbol
-        const validPages = ['dashboard', 'notifications', 'control'];
+        const validPages = ['dashboard', 'notifications', 'control', 'logs'];
         
         if (validPages.includes(hash)) {
             this.showPage(hash);
@@ -92,6 +114,29 @@ class SmartDryApp {
             // Notification preview items di dashboard
             if (e.target.closest('.notification-preview-item')) {
                 this.showPage('notifications');
+                return;
+            }
+
+            // Stat cards di notifications page
+            if (e.target.closest('.stat-card.clickable')) {
+                const statCard = e.target.closest('.stat-card');
+                const filter = statCard.dataset.filter;
+                this.applyNotificationFilter(filter);
+                return;
+            }
+
+            // Status items yang bisa diklik di dashboard
+            if (e.target.closest('.status-item.clickable')) {
+                const statusItem = e.target.closest('.status-item');
+                const action = statusItem.dataset.action;
+                this.handleStatusItemClick(action);
+                return;
+            }
+
+            // Sensor cards yang bisa diklik
+            if (e.target.closest('.sensor-card')) {
+                const sensorCard = e.target.closest('.sensor-card');
+                this.handleSensorCardClick(sensorCard);
                 return;
             }
         });
@@ -141,14 +186,93 @@ class SmartDryApp {
         }
     }
 
+    handleStatusItemClick(action) {
+        switch (action) {
+            case 'toggle-roof':
+                this.toggleRoofStatus();
+                break;
+            case 'toggle-mode':
+                this.toggleOperationMode();
+                break;
+            case 'adjust-ventilation':
+                this.showVentilationControl();
+                break;
+            case 'toggle-heater':
+                this.toggleHeater();
+                break;
+        }
+    }
+
+    handleSensorCardClick(sensorCard) {
+        const sensorType = sensorCard.dataset.sensor;
+        this.showSensorDetails(sensorType);
+    }
+
+    toggleRoofStatus() {
+        const newStatus = this.roofStatus === 'closed' ? 'open' : 'closed';
+        this.controlRoof(newStatus);
+    }
+
+    toggleOperationMode() {
+        const currentMode = document.getElementById('operation-mode').textContent;
+        const newMode = currentMode === 'Otomatis' ? 'Manual' : 'Otomatis';
+        
+        document.getElementById('operation-mode').textContent = newMode;
+        document.getElementById('operation-mode').className = `status-value ${newMode === 'Otomatis' ? 'auto' : 'active'}`;
+        
+        this.showToast(`Mode operasi diubah ke: ${newMode}`, 'success');
+        
+        // Log the change
+        this.addLog('system', 'mode_change', `Mode operasi diubah ke ${newMode}`, newMode.toLowerCase());
+    }
+
+    showVentilationControl() {
+        this.showPage('control');
+        this.showToast('Buka tab Kontrol Ventilasi untuk mengatur', 'info');
+    }
+
+    toggleHeater() {
+        const currentStatus = document.getElementById('heater-status').textContent;
+        const newStatus = currentStatus === 'Nonaktif' ? 'Aktif' : 'Nonaktif';
+        
+        document.getElementById('heater-status').textContent = newStatus;
+        document.getElementById('heater-status').className = `status-value ${newStatus === 'Aktif' ? 'active' : 'inactive'}`;
+        
+        this.showToast(`Pemanas ${newStatus.toLowerCase()}`, newStatus === 'Aktif' ? 'success' : 'info');
+        
+        // Log the change
+        this.addLog('system', 'heater_toggle', `Pemanas ${newStatus.toLowerCase()}`, newStatus.toLowerCase());
+    }
+
+    showSensorDetails(sensorType) {
+        const sensorNames = {
+            'rainfall': 'Sensor Hujan',
+            'light': 'Sensor Cahaya',
+            'temperature': 'Sensor Suhu',
+            'level': 'Sensor Level Gabah'
+        };
+        
+        this.showToast(`Membuka detail ${sensorNames[sensorType]}`, 'info');
+        // In a real app, this would open a detailed sensor view
+    }
+
     loadSampleData() {
+        // Sample sensor data
+        this.sensorData = {
+            rainfall: { value: 0.0, unit: 'mm', status: 'normal' },
+            light: { value: 850, unit: 'lux', status: 'normal' },
+            temperature: { value: 32, unit: '°C', status: 'normal' },
+            humidity: { value: 65, unit: '%', status: 'normal' },
+            level: { value: 75, unit: '%', status: 'warning' }
+        };
+
         // Sample notifications
         this.notifications = [
             {
                 id: '1',
                 type: 'warning',
                 message: '🚨 Suhu Tinggi: 36°C (Batas: 35°C)',
-                timestamp: '2025-11-11 20:30:42',
+                timestamp: new Date(Date.now() - 5 * 60000).toISOString().replace('T', ' ').substring(0, 19),
                 isRead: false,
                 priority: 'high',
                 clickable: true
@@ -157,7 +281,7 @@ class SmartDryApp {
                 id: '2',
                 type: 'warning',
                 message: '💧 Kelembapan Tinggi: 85% (Batas: 80%)',
-                timestamp: '2025-11-11 20:30:42',
+                timestamp: new Date(Date.now() - 10 * 60000).toISOString().replace('T', ' ').substring(0, 19),
                 isRead: false,
                 priority: 'high',
                 clickable: true
@@ -166,7 +290,7 @@ class SmartDryApp {
                 id: '3',
                 type: 'info',
                 message: '🌧️ Hujan sedang: 10mm',
-                timestamp: '2025-11-11 20:30:42',
+                timestamp: new Date(Date.now() - 30 * 60000).toISOString().replace('T', ' ').substring(0, 19),
                 isRead: true,
                 priority: 'medium',
                 clickable: true
@@ -175,7 +299,7 @@ class SmartDryApp {
                 id: '4',
                 type: 'warning',
                 message: '🌑 Cahaya Rendah: 50 lux',
-                timestamp: '2025-11-11 20:30:42',
+                timestamp: new Date(Date.now() - 2 * 3600000).toISOString().replace('T', ' ').substring(0, 19),
                 isRead: false,
                 priority: 'medium',
                 clickable: true
@@ -183,8 +307,8 @@ class SmartDryApp {
             {
                 id: '5',
                 type: 'success',
-                message: '🟢 Sistem aktif - 11/11/2025 14:30:42',
-                timestamp: '2025-11-11 20:30:42',
+                message: '🟢 Sistem aktif - ' + new Date().toLocaleString('id-ID'),
+                timestamp: new Date(Date.now() - 6 * 3600000).toISOString().replace('T', ' ').substring(0, 19),
                 isRead: true,
                 priority: 'low',
                 clickable: true
@@ -198,7 +322,7 @@ class SmartDryApp {
                 type: 'roof',
                 action: 'open',
                 message: 'Atap terbuka otomatis - kondisi cerah',
-                timestamp: '2025-11-11 14:25:30',
+                timestamp: new Date(Date.now() - 4 * 3600000).toISOString().replace('T', ' ').substring(0, 19),
                 status: 'open'
             },
             {
@@ -206,7 +330,7 @@ class SmartDryApp {
                 type: 'roof',
                 action: 'close',
                 message: 'Atap tertutup otomatis - terdeteksi hujan',
-                timestamp: '2025-11-11 15:45:12',
+                timestamp: new Date(Date.now() - 3 * 3600000).toISOString().replace('T', ' ').substring(0, 19),
                 status: 'closed'
             },
             {
@@ -214,7 +338,7 @@ class SmartDryApp {
                 type: 'system',
                 action: 'start',
                 message: 'Sistem pengeringan diaktifkan',
-                timestamp: '2025-11-11 16:10:05',
+                timestamp: new Date(Date.now() - 8 * 3600000).toISOString().replace('T', ' ').substring(0, 19),
                 status: 'active'
             },
             {
@@ -222,7 +346,7 @@ class SmartDryApp {
                 type: 'rain',
                 action: 'detected',
                 message: 'Hujan terdeteksi: 10mm',
-                timestamp: '2025-11-11 16:30:42',
+                timestamp: new Date(Date.now() - 3 * 3600000).toISOString().replace('T', ' ').substring(0, 19),
                 status: 'rain'
             },
             {
@@ -230,15 +354,84 @@ class SmartDryApp {
                 type: 'roof',
                 action: 'open',
                 message: 'Atap dibuka manual oleh operator',
-                timestamp: '2025-11-11 17:15:20',
+                timestamp: new Date(Date.now() - 2 * 3600000).toISOString().replace('T', ' ').substring(0, 19),
                 status: 'open'
             }
         ];
         
+        this.updateSensorCards();
         this.updateNotificationStats();
         this.updateRoofStatus();
         this.updateQuickNotificationBadge();
         this.updateNotificationPreview();
+        this.updateLogStatistics();
+        this.applyLogFilter();
+    }
+
+    updateSensorCards() {
+        const sensorOverview = document.querySelector('.sensor-overview');
+        if (!sensorOverview) return;
+
+        const sensors = [
+            {
+                type: 'rainfall',
+                icon: 'fa-cloud-rain',
+                title: 'Sensor Hujan',
+                value: this.sensorData.rainfall.value,
+                unit: this.sensorData.rainfall.unit,
+                status: this.sensorData.rainfall.status
+            },
+            {
+                type: 'light',
+                icon: 'fa-sun',
+                title: 'Intensitas Cahaya',
+                value: this.sensorData.light.value,
+                unit: this.sensorData.light.unit,
+                status: this.sensorData.light.status
+            },
+            {
+                type: 'temperature',
+                icon: 'fa-thermometer-half',
+                title: 'Suhu & Kelembapan',
+                value: `${this.sensorData.temperature.value}°C / ${this.sensorData.humidity.value}%`,
+                unit: '',
+                status: this.sensorData.temperature.status
+            },
+            {
+                type: 'level',
+                icon: 'fa-weight-hanging',
+                title: 'Level Gabah',
+                value: this.sensorData.level.value,
+                unit: this.sensorData.level.unit,
+                status: this.sensorData.level.status
+            }
+        ];
+
+        const sensorsHTML = sensors.map(sensor => `
+            <div class="sensor-card clickable" data-sensor="${sensor.type}">
+                <div class="sensor-header">
+                    <i class="fas ${sensor.icon} sensor-icon ${sensor.type}"></i>
+                    <div class="sensor-info">
+                        <div class="sensor-title">${sensor.title}</div>
+                        <div class="sensor-value">${sensor.value} <span class="sensor-unit">${sensor.unit}</span></div>
+                    </div>
+                </div>
+                <div class="sensor-status ${sensor.status}">
+                    ${this.getStatusText(sensor.status)}
+                </div>
+            </div>
+        `).join('');
+
+        sensorOverview.innerHTML = sensorsHTML;
+    }
+
+    getStatusText(status) {
+        const statusTexts = {
+            'normal': 'Normal',
+            'warning': 'Perlu Monitoring',
+            'critical': 'Kritis'
+        };
+        return statusTexts[status] || status;
     }
 
     setupNavigation() {
@@ -279,21 +472,25 @@ class SmartDryApp {
         // Show selected page with fade in
         setTimeout(() => {
             const targetPage = document.getElementById(`${page}-page`);
-            targetPage.classList.add('active');
-            
-            // Update URL hash
-            window.location.hash = page;
-            
-            // Load page-specific content
-            if (page === 'notifications') {
-                this.loadNotifications();
-                this.applyLogFilter();
-                this.updateRoofStatus();
-            } else if (page === 'control') {
-                this.loadControlPanel();
-            } else if (page === 'dashboard') {
-                this.updateDashboardStats();
-                this.updateNotificationPreview();
+            if (targetPage) {
+                targetPage.classList.add('active');
+                
+                // Update URL hash
+                window.location.hash = page;
+                
+                // Load page-specific content
+                if (page === 'notifications') {
+                    this.loadNotifications();
+                    this.applyNotificationFilter();
+                } else if (page === 'control') {
+                    this.loadControlPanel();
+                } else if (page === 'dashboard') {
+                    this.updateDashboardStats();
+                    this.updateNotificationPreview();
+                } else if (page === 'logs') {
+                    this.applyLogFilter();
+                    this.updateLogStatistics();
+                }
             }
         }, 250);
         
@@ -330,6 +527,9 @@ class SmartDryApp {
                 break;
             case 'rain':
                 filteredLogs = filteredLogs.filter(log => log.type === 'rain');
+                break;
+            case 'sensor':
+                filteredLogs = filteredLogs.filter(log => log.type === 'sensor');
                 break;
             // 'all' shows all logs
         }
@@ -379,43 +579,24 @@ class SmartDryApp {
             'system': {
                 'start': '🟢',
                 'stop': '🔴',
-                'error': '❌'
+                'error': '❌',
+                'mode_change': '🔄',
+                'heater_toggle': '🔥'
             },
             'rain': {
                 'detected': '🌧️',
                 'stopped': '🌤️'
+            },
+            'sensor': {
+                'reading': '📊',
+                'alert': '⚠️'
             }
         };
         
         return icons[type]?.[action] || '📝';
     }
 
-    getStatusText(status) {
-        const statusTexts = {
-            'open': 'Terbuka',
-            'closed': 'Tertutup',
-            'moving': 'Bergerak',
-            'active': 'Aktif',
-            'inactive': 'Nonaktif',
-            'rain': 'Hujan',
-            'clear': 'Cerah'
-        };
-        
-        return statusTexts[status] || status;
-    }
-
-    updateRoofStatus() {
-        const roofIndicator = document.querySelector('.roof-indicator');
-        const roofStatusText = document.querySelector('.roof-status-text');
-        const lastAction = this.logHistory.find(log => log.type === 'roof');
-        
-        if (lastAction) {
-            this.roofStatus = lastAction.status;
-            roofIndicator.className = `roof-indicator ${this.roofStatus}`;
-            roofStatusText.textContent = this.getRoofStatusText(this.roofStatus);
-        }
-        
-        // Update roof stats
+    updateLogStatistics() {
         const roofOpens = this.logHistory.filter(log => 
             log.type === 'roof' && log.action === 'open'
         ).length;
@@ -424,17 +605,45 @@ class SmartDryApp {
             log.type === 'roof' && log.action === 'close'
         ).length;
         
+        const rainEvents = this.logHistory.filter(log => 
+            log.type === 'rain'
+        ).length;
+        
+        const autoActions = this.logHistory.filter(log => 
+            log.message.includes('otomatis')
+        ).length;
+
         document.getElementById('roof-opens').textContent = roofOpens;
         document.getElementById('roof-closes').textContent = roofCloses;
-        document.getElementById('rain-events').textContent = 
-            this.logHistory.filter(log => log.type === 'rain').length;
+        document.getElementById('rain-events').textContent = rainEvents;
+        document.getElementById('auto-actions').textContent = autoActions;
+    }
+
+    updateRoofStatus() {
+        const roofIndicator = document.querySelector('.roof-indicator');
+        const roofStatusText = document.querySelector('.roof-status-text');
+        const roofControlStatus = document.getElementById('roof-control-status');
+        const lastAction = this.logHistory.find(log => log.type === 'roof');
+        
+        if (lastAction) {
+            this.roofStatus = lastAction.status;
+            if (roofIndicator) roofIndicator.className = `roof-indicator ${this.roofStatus}`;
+            if (roofStatusText) roofStatusText.textContent = this.getRoofStatusText(this.roofStatus);
+            if (roofControlStatus) {
+                roofControlStatus.className = `status-indicator ${this.roofStatus}`;
+                roofControlStatus.innerHTML = `
+                    <i class="fas fa-door-${this.roofStatus === 'open' ? 'open' : 'closed'}"></i>
+                    <span>Status: ${this.getRoofStatusText(this.roofStatus)}</span>
+                `;
+            }
+        }
     }
 
     getRoofStatusText(status) {
         const statusTexts = {
-            'open': 'Atap Terbuka',
-            'closed': 'Atap Tertutup',
-            'moving': 'Atap Sedang Bergerak'
+            'open': 'Terbuka',
+            'closed': 'Tertutup',
+            'moving': 'Sedang Bergerak'
         };
         
         return statusTexts[status] || 'Status Tidak Diketahui';
@@ -463,6 +672,7 @@ class SmartDryApp {
         this.logHistory.unshift(newLog);
         this.applyLogFilter();
         this.updateRoofStatus();
+        this.updateLogStatistics();
         
         // Simulate completion after 3 seconds
         setTimeout(() => {
@@ -501,6 +711,8 @@ class SmartDryApp {
         
         // Update notification preview di dashboard
         this.updateNotificationPreview();
+        
+        return notification.id;
     }
 
     // Enhanced notification rendering dengan priority
@@ -572,15 +784,15 @@ class SmartDryApp {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: ${this.getAlertColor(type)};
-            color: white;
+            background: white;
+            color: var(--dark);
             padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-hover);
             z-index: 10000;
             max-width: 400px;
             animation: slideInRight 0.3s ease;
-            border-left: 4px solid ${this.getBorderColor(type)};
+            border-left: 4px solid ${this.getAlertColor(type)};
             cursor: ${clickable ? 'pointer' : 'default'};
         `;
 
@@ -597,26 +809,24 @@ class SmartDryApp {
                 }, 300);
             }
         }, 5000);
+
+        // Click handler untuk alert
+        if (clickable) {
+            alert.addEventListener('click', () => {
+                this.showPage('notifications');
+                alert.remove();
+            });
+        }
     }
 
     getAlertColor(type) {
         const colors = {
-            'warning': '#e74c3c',
-            'error': '#c0392b',
-            'success': '#27ae60',
-            'info': '#3498db'
+            'warning': 'var(--secondary)',
+            'error': '#F44336',
+            'success': 'var(--primary)',
+            'info': '#2196F3'
         };
-        return colors[type] || '#3498db';
-    }
-
-    getBorderColor(type) {
-        const colors = {
-            'warning': '#ff6b6b',
-            'error': '#ff4757',
-            'success': '#2ed573',
-            'info': '#3742fa'
-        };
-        return colors[type] || '#3742fa';
+        return colors[type] || '#2196F3';
     }
 
     // Method untuk update quick notification badge
@@ -624,20 +834,28 @@ class SmartDryApp {
         let badge = document.getElementById('quick-notification-badge');
         const unreadCount = this.notifications.filter(n => !n.isRead).length;
         
-        if (unreadCount > 0 && !badge) {
-            badge = document.createElement('div');
-            badge.id = 'quick-notification-badge';
-            badge.className = 'quick-notification-badge';
-            badge.innerHTML = `
-                🔔
-                <div class="badge-count">${unreadCount}</div>
-            `;
-            document.body.appendChild(badge);
-        } else if (badge && unreadCount > 0) {
-            const badgeCount = badge.querySelector('.badge-count');
-            badgeCount.textContent = unreadCount;
-        } else if (badge && unreadCount === 0) {
-            badge.remove();
+        if (unreadCount > 0) {
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.id = 'quick-notification-badge';
+                badge.className = 'quick-notification-badge';
+                badge.innerHTML = `
+                    🔔
+                    <div class="badge-count">${unreadCount}</div>
+                `;
+                document.body.appendChild(badge);
+                
+                // Add click event to badge
+                badge.addEventListener('click', () => {
+                    this.showPage('notifications');
+                });
+            } else {
+                const badgeCount = badge.querySelector('.badge-count');
+                badgeCount.textContent = unreadCount;
+            }
+            badge.classList.remove('hidden');
+        } else if (badge) {
+            badge.classList.add('hidden');
         }
     }
 
@@ -654,7 +872,7 @@ class SmartDryApp {
         }
 
         const previewHTML = recentNotifications.map(notif => `
-            <div class="notification-preview-item ${notif.type}" data-id="${notif.id}">
+            <div class="notification-preview-item ${notif.type} ${notif.clickable ? 'clickable' : ''}" data-id="${notif.id}">
                 <div class="preview-message">${notif.message}</div>
                 <div class="preview-time">${this.formatTime(notif.timestamp)}</div>
             </div>
@@ -665,15 +883,27 @@ class SmartDryApp {
 
     // Quick actions untuk notifikasi page
     setupQuickActions() {
-        document.getElementById('open-roof-btn').addEventListener('click', () => {
+        // Refresh sensors button
+        document.getElementById('refresh-sensors')?.addEventListener('click', () => {
+            this.refreshSensors();
+        });
+
+        // Quick roof controls
+        document.getElementById('quick-open-roof')?.addEventListener('click', () => {
             this.controlRoof('open');
         });
         
-        document.getElementById('close-roof-btn').addEventListener('click', () => {
+        document.getElementById('quick-close-roof')?.addEventListener('click', () => {
             this.controlRoof('close');
         });
         
-        document.getElementById('test-notification-btn').addEventListener('click', () => {
+        // Emergency stop
+        document.getElementById('emergency-stop')?.addEventListener('click', () => {
+            this.emergencyStop();
+        });
+
+        // Test notification
+        document.getElementById('test-notification-btn')?.addEventListener('click', () => {
             this.addNotification(
                 '🧪 Notifikasi percobaan - Sistem berfungsi normal',
                 'info',
@@ -683,29 +913,88 @@ class SmartDryApp {
                 true
             );
         });
+
+        // Notification actions
+        document.getElementById('mark-all-read-btn')?.addEventListener('click', () => {
+            this.markAllAsRead();
+        });
+        
+        document.getElementById('clear-all-btn')?.addEventListener('click', () => {
+            this.clearAllNotifications();
+        });
+    }
+
+    refreshSensors() {
+        const refreshBtn = document.getElementById('refresh-sensors');
+        if (refreshBtn) {
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat...';
+            refreshBtn.disabled = true;
+        }
+
+        // Simulate API call
+        setTimeout(() => {
+            // Update sensor data with random values for demo
+            this.sensorData.temperature.value = 32 + Math.floor(Math.random() * 6);
+            this.sensorData.humidity.value = 60 + Math.floor(Math.random() * 20);
+            this.sensorData.light.value = 500 + Math.floor(Math.random() * 600);
+            this.sensorData.rainfall.value = (Math.random() * 2).toFixed(1);
+            
+            this.updateSensorCards();
+            
+            if (refreshBtn) {
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+                refreshBtn.disabled = false;
+            }
+            
+            this.showToast('Data sensor diperbarui', 'success');
+        }, 1500);
+    }
+
+    emergencyStop() {
+        if (confirm('Apakah Anda yakin ingin menghentikan sistem secara darurat? Semua operasi akan dihentikan.')) {
+            this.showToast('🛑 Sistem dihentikan secara darurat!', 'error');
+            
+            // Reset all controls
+            this.roofStatus = 'closed';
+            this.updateRoofStatus();
+            
+            // Add emergency log
+            this.addLog('system', 'emergency_stop', 'Sistem dihentikan secara darurat oleh operator', 'inactive');
+            
+            // Show confirmation
+            setTimeout(() => {
+                if (confirm('Sistem telah dihentikan. Tekan OK untuk melanjutkan operasi normal.')) {
+                    this.showToast('Sistem dilanjutkan kembali', 'success');
+                    this.addLog('system', 'resume', 'Sistem dilanjutkan kembali setelah emergency stop', 'active');
+                }
+            }, 1000);
+        }
     }
 
     setupFilterListeners() {
         const filterButtons = document.querySelectorAll('.filter-btn');
+        const filterSelect = document.getElementById('notification-filter');
         
         filterButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 const filter = btn.dataset.filter;
-                
-                // Update active filter
-                filterButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                this.currentFilter = filter;
-                this.applyNotificationFilter();
+                this.applyNotificationFilter(filter);
             });
         });
+
+        if (filterSelect) {
+            filterSelect.addEventListener('change', (e) => {
+                this.applyNotificationFilter(e.target.value);
+            });
+        }
     }
 
-    applyNotificationFilter() {
+    applyNotificationFilter(filter = this.currentFilter) {
+        this.currentFilter = filter;
+        
         let filteredNotifications = [...this.notifications];
         
-        switch (this.currentFilter) {
+        switch (filter) {
             case 'unread':
                 filteredNotifications = filteredNotifications.filter(n => !n.isRead);
                 break;
@@ -715,7 +1004,23 @@ class SmartDryApp {
             case 'error':
                 filteredNotifications = filteredNotifications.filter(n => n.type === 'error');
                 break;
+            case 'info':
+                filteredNotifications = filteredNotifications.filter(n => n.type === 'info');
+                break;
             // 'all' shows all notifications
+        }
+        
+        // Update filter UI
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.filter === filter) {
+                btn.classList.add('active');
+            }
+        });
+        
+        const filterSelect = document.getElementById('notification-filter');
+        if (filterSelect) {
+            filterSelect.value = filter;
         }
         
         this.renderFilteredNotifications(filteredNotifications);
@@ -723,6 +1028,8 @@ class SmartDryApp {
 
     loadNotifications() {
         const notificationsList = document.getElementById('notifications-list-full');
+        if (!notificationsList) return;
+        
         notificationsList.innerHTML = '<div class="loading">Memuat notifikasi...</div>';
         
         // Simulate API delay
@@ -781,9 +1088,13 @@ class SmartDryApp {
     updateNotificationStats() {
         const totalCount = this.notifications.length;
         const unreadCount = this.notifications.filter(n => !n.isRead).length;
+        const warningCount = this.notifications.filter(n => n.type === 'warning').length;
+        const errorCount = this.notifications.filter(n => n.type === 'error').length;
         
         document.getElementById('total-notifications').textContent = totalCount;
         document.getElementById('unread-notifications').textContent = unreadCount;
+        document.getElementById('warning-notifications').textContent = warningCount;
+        document.getElementById('error-notifications').textContent = errorCount;
         
         this.unreadCount = unreadCount;
         this.updateNotificationBadge();
@@ -805,13 +1116,27 @@ class SmartDryApp {
 
     formatTime(timestamp) {
         const date = new Date(timestamp);
-        return date.toLocaleString('id-ID', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) {
+            return 'Baru saja';
+        } else if (diffMins < 60) {
+            return `${diffMins} menit yang lalu`;
+        } else if (diffHours < 24) {
+            return `${diffHours} jam yang lalu`;
+        } else if (diffDays < 7) {
+            return `${diffDays} hari yang lalu`;
+        } else {
+            return date.toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
     }
 
     showToast(message, type = 'info') {
@@ -829,10 +1154,30 @@ class SmartDryApp {
         // Auto remove after 5 seconds
         setTimeout(() => {
             if (toast.parentElement) {
-                toast.style.animation = 'slideInRight 0.3s ease reverse';
+                toast.style.animation = 'slideInUp 0.3s ease reverse';
                 setTimeout(() => toast.remove(), 300);
             }
         }, 5000);
+    }
+
+    addLog(type, action, message, status = null) {
+        const log = {
+            id: 'log' + Date.now(),
+            type: type,
+            action: action,
+            message: message,
+            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+            status: status
+        };
+        
+        this.logHistory.unshift(log);
+        
+        if (this.currentPage === 'logs') {
+            this.applyLogFilter();
+            this.updateLogStatistics();
+        }
+        
+        return log.id;
     }
 
     updateDashboardStats() {
@@ -908,6 +1253,34 @@ class SmartDryApp {
             });
         }
 
+        // Ventilation control
+        const ventilationSlider = document.getElementById('ventilation-slider');
+        if (ventilationSlider) {
+            ventilationSlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                document.getElementById('ventilation-value').textContent = `${value}%`;
+                
+                // Update status in dashboard
+                const ventilationStatus = document.getElementById('ventilation-status');
+                if (ventilationStatus) {
+                    ventilationStatus.textContent = `Aktif (${value}%)`;
+                }
+            });
+        }
+
+        // Heater control
+        const heaterSlider = document.getElementById('heater-slider');
+        if (heaterSlider) {
+            heaterSlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                const heaterValue = document.getElementById('heater-value');
+                if (heaterValue) {
+                    heaterValue.textContent = value > 0 ? `${value}%` : 'OFF';
+                    heaterValue.style.color = value > 0 ? 'var(--primary)' : '#F44336';
+                }
+            });
+        }
+
         // Toggle switches
         document.querySelectorAll('.toggle-switch input').forEach(switchEl => {
             switchEl.addEventListener('change', (e) => {
@@ -918,6 +1291,15 @@ class SmartDryApp {
                     `${this.getControlLabel(controlName)} ${isEnabled ? 'diaktifkan' : 'dinonaktifkan'}`,
                     isEnabled ? 'success' : 'info'
                 );
+
+                // Special handling for auto roof toggle
+                if (controlName === 'auto-roof') {
+                    const modeElement = document.getElementById('operation-mode');
+                    if (modeElement) {
+                        modeElement.textContent = isEnabled ? 'Otomatis' : 'Manual';
+                        modeElement.className = `status-value ${isEnabled ? 'auto' : 'active'}`;
+                    }
+                }
             });
         });
     }
@@ -929,7 +1311,8 @@ class SmartDryApp {
             'ventilation': 'Ventilasi',
             'lighting': 'Pencahayaan',
             'drying': 'Pengeringan',
-            'emergency': 'Mode Darurat'
+            'emergency': 'Mode Darurat',
+            'auto-roof': 'Mode Otomatis Atap'
         };
         return labels[controlName] || controlName;
     }
@@ -937,6 +1320,9 @@ class SmartDryApp {
     initializeChart() {
         const ctx = document.getElementById('sensorChart');
         if (!ctx) return;
+
+        // Generate sample data for the chart
+        this.generateChartData();
 
         this.sensorChart = new Chart(ctx.getContext('2d'), {
             type: 'line',
@@ -965,7 +1351,7 @@ class SmartDryApp {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 interaction: {
                     mode: 'index',
                     intersect: false,
@@ -976,22 +1362,58 @@ class SmartDryApp {
                         grid: {
                             color: 'rgba(0,0,0,0.1)'
                         }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(0,0,0,0.1)'
+                        }
                     }
                 },
                 plugins: {
                     legend: {
                         display: true,
                         position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
                     }
                 }
             }
         });
     }
 
+    generateChartData() {
+        const now = new Date();
+        this.chartData.labels = [];
+        this.chartData.temperatures = [];
+        this.chartData.lightIntensities = [];
+
+        // Generate data for the last 24 hours
+        for (let i = 23; i >= 0; i--) {
+            const time = new Date(now);
+            time.setHours(now.getHours() - i);
+            this.chartData.labels.push(time.getHours() + ':00');
+            
+            // Generate realistic data
+            const baseTemp = 30;
+            const tempVariation = Math.sin(i * Math.PI / 12) * 6;
+            this.chartData.temperatures.push(Math.round(baseTemp + tempVariation));
+            
+            const baseLight = 500;
+            const lightVariation = Math.sin(i * Math.PI / 12) * 400;
+            this.chartData.lightIntensities.push(Math.max(0, Math.round(baseLight + lightVariation)));
+        }
+    }
+
     initWebSocket() {
         // WebSocket implementation would go here
         console.log('WebSocket initialization placeholder');
-        this.updateConnectionStatus(true, 'Connected');
+        
+        // Simulate connection after a delay
+        setTimeout(() => {
+            this.updateConnectionStatus(true, 'Connected');
+        }, 2000);
     }
 
     updateConnectionStatus(connected, message) {
@@ -1021,13 +1443,15 @@ document.addEventListener('DOMContentLoaded', function() {
     window.smartDryApp = new SmartDryApp();
 });
 
-// Add bounce animation for badge
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes bounce {
-        0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-        40% {transform: translateY(-5px);}
-        60% {transform: translateY(-3px);}
+// Global functions for HTML onclick handlers
+function markAllAsRead() {
+    if (window.smartDryApp) {
+        window.smartDryApp.markAllAsRead();
     }
-`;
-document.head.appendChild(style);
+}
+
+function clearAllNotifications() {
+    if (window.smartDryApp) {
+        window.smartDryApp.clearAllNotifications();
+    }
+}
