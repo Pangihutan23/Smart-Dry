@@ -36,6 +36,10 @@
                     <span class="nav-text">Notifikasi</span>
                     <span class="nav-badge" id="notification-badge">3</span>
                 </a>
+                <a href="#logs" class="nav-item" data-page="logs">
+                    <i class="fas fa-history nav-icon"></i>
+                    <span class="nav-text">Riwayat Sistem</span>
+                </a>
             </nav>
             
             <div class="sidebar-footer">
@@ -82,118 +86,86 @@
                     <div class="dashboard-grid">
                         <!-- Sensor Overview -->
                         <div class="sensor-section">
-                            <h3 class="section-title">Status Sensor</h3>
+                            <h3 class="section-title">
+                                <i class="fas fa-microchip"></i> Status Sensor
+                                <button class="refresh-btn" id="refresh-sensors">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                            </h3>
                             <div class="sensor-overview">
-                                <div class="sensor-card">
-                                    <div class="sensor-header">
-                                        <i class="fas fa-cloud-rain sensor-icon rainfall"></i>
-                                        <div class="sensor-info">
-                                            <div class="sensor-title">Sensor Hujan</div>
-                                            <div class="sensor-value" id="rainfall-value">0.0 <span class="sensor-unit">mm</span></div>
-                                        </div>
-                                    </div>
-                                    <div class="sensor-status normal">Normal</div>
-                                </div>
-                                
-                                <div class="sensor-card">
-                                    <div class="sensor-header">
-                                        <i class="fas fa-sun sensor-icon light"></i>
-                                        <div class="sensor-info">
-                                            <div class="sensor-title">Intensitas Cahaya</div>
-                                            <div class="sensor-value" id="light-value">850 <span class="sensor-unit">lux</span></div>
-                                        </div>
-                                    </div>
-                                    <div class="sensor-status normal">Optimal</div>
-                                </div>
-                                
-                                <div class="sensor-card">
-                                    <div class="sensor-header">
-                                        <i class="fas fa-thermometer-half sensor-icon temp"></i>
-                                        <div class="sensor-info">
-                                            <div class="sensor-title">Suhu & Kelembapan</div>
-                                            <div class="sensor-value" id="temp-humid-value">32°C / 65%</div>
-                                        </div>
-                                    </div>
-                                    <div class="sensor-status normal">Stabil</div>
-                                </div>
-                                
-                                <div class="sensor-card">
-                                    <div class="sensor-header">
-                                        <i class="fas fa-weight-hanging sensor-icon level"></i>
-                                        <div class="sensor-info">
-                                            <div class="sensor-title">Level Gabah</div>
-                                            <div class="sensor-value" id="distance-value">75 <span class="sensor-unit">%</span></div>
-                                        </div>
-                                    </div>
-                                    <div class="sensor-status warning">Perlu Monitoring</div>
+                                <!-- Sensor cards will be populated by JavaScript -->
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="quick-actions">
+                                <h3 class="section-title">
+                                    <i class="fas fa-bolt"></i> Aksi Cepat
+                                </h3>
+                                <div class="action-buttons">
+                                    <button class="action-btn primary" id="quick-open-roof">
+                                        <i class="fas fa-door-open"></i>
+                                        Buka Atap
+                                    </button>
+                                    <button class="action-btn secondary" id="quick-close-roof">
+                                        <i class="fas fa-door-closed"></i>
+                                        Tutup Atap
+                                    </button>
+                                    <button class="action-btn" id="emergency-stop">
+                                        <i class="fas fa-stop-circle"></i>
+                                        Stop Darurat
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- System Status -->
+                        <!-- System Status & Notifications -->
                         <div class="status-section">
+                            <!-- System Status -->
                             <div class="status-card">
-                                <h3 class="section-title">Status Sistem</h3>
+                                <h3 class="section-title">
+                                    <i class="fas fa-info-circle"></i> Status Sistem
+                                    <span class="status-badge active" id="system-status-badge">AKTIF</span>
+                                </h3>
                                 <div class="status-overview">
-                                    <div class="status-item">
-                                        <div class="status-label">Atap Pengering</div>
-                                        <div class="status-value closed">Tertutup</div>
+                                    <div class="status-item clickable" data-action="toggle-roof">
+                                        <div class="status-label">
+                                            <i class="fas fa-home"></i>
+                                            Atap Pengering
+                                        </div>
+                                        <div class="status-value closed" id="roof-status">Tertutup</div>
                                     </div>
-                                    <div class="status-item">
-                                        <div class="status-label">Mode Operasi</div>
-                                        <div class="status-value auto">Otomatis</div>
+                                    <div class="status-item clickable" data-action="toggle-mode">
+                                        <div class="status-label">
+                                            <i class="fas fa-robot"></i>
+                                            Mode Operasi
+                                        </div>
+                                        <div class="status-value auto" id="operation-mode">Otomatis</div>
                                     </div>
-                                    <div class="status-item">
-                                        <div class="status-label">Ventilasi</div>
-                                        <div class="status-value active">Aktif (75%)</div>
+                                    <div class="status-item clickable" data-action="adjust-ventilation">
+                                        <div class="status-label">
+                                            <i class="fas fa-fan"></i>
+                                            Ventilasi
+                                        </div>
+                                        <div class="status-value active" id="ventilation-status">Aktif (75%)</div>
                                     </div>
-                                    <div class="status-item">
-                                        <div class="status-label">Pemanas</div>
-                                        <div class="status-value inactive">Nonaktif</div>
+                                    <div class="status-item clickable" data-action="toggle-heater">
+                                        <div class="status-label">
+                                            <i class="fas fa-fire"></i>
+                                            Pemanas
+                                        </div>
+                                        <div class="status-value inactive" id="heater-status">Nonaktif</div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Quick Stats -->
-                            <div class="stats-card">
-                                <h3 class="section-title">Statistik Hari Ini</h3>
-                                <div class="stats-grid">
-                                    <div class="stat-item">
-                                        <div class="stat-icon">
-                                            <i class="fas fa-door-open"></i>
-                                        </div>
-                                        <div class="stat-info">
-                                            <div class="stat-value">2x</div>
-                                            <div class="stat-label">Atap Dibuka</div>
-                                        </div>
-                                    </div>
-                                    <div class="stat-item">
-                                        <div class="stat-icon">
-                                            <i class="fas fa-cloud-rain"></i>
-                                        </div>
-                                        <div class="stat-info">
-                                            <div class="stat-value">1x</div>
-                                            <div class="stat-label">Kejadian Hujan</div>
-                                        </div>
-                                    </div>
-                                    <div class="stat-item">
-                                        <div class="stat-icon">
-                                            <i class="fas fa-clock"></i>
-                                        </div>
-                                        <div class="stat-info">
-                                            <div class="stat-value">8.5h</div>
-                                            <div class="stat-label">Waktu Pengeringan</div>
-                                        </div>
-                                    </div>
-                                    <div class="stat-item">
-                                        <div class="stat-icon">
-                                            <i class="fas fa-bell"></i>
-                                        </div>
-                                        <div class="stat-info">
-                                            <div class="stat-value">3</div>
-                                            <div class="stat-label">Notifikasi</div>
-                                        </div>
-                                    </div>
+                            <!-- Notifications Preview -->
+                            <div class="notifications-preview">
+                                <h3 class="section-title">
+                                    <i class="fas fa-bell"></i> Notifikasi Terbaru
+                                    <span class="view-all" onclick="smartDryApp.showPage('notifications')">Lihat Semua</span>
+                                </h3>
+                                <div class="notification-preview-list" id="notification-preview-list">
+                                    <!-- Notifications will be populated by JavaScript -->
                                 </div>
                             </div>
                         </div>
@@ -203,16 +175,17 @@
                     <div class="charts-section">
                         <div class="chart-container">
                             <div class="chart-header">
-                                <h3>Grafik Monitoring Suhu & Kelembapan</h3>
-                                <div class="chart-legend">
-                                    <div class="legend-item">
-                                        <div class="legend-color temp"></div>
-                                        <span>Suhu (°C)</span>
-                                    </div>
-                                    <div class="legend-item">
-                                        <div class="legend-color humidity"></div>
-                                        <span>Kelembapan (%)</span>
-                                    </div>
+                                <h3>Grafik Monitoring Sensor</h3>
+                                <div class="chart-controls">
+                                    <select id="chart-time-range">
+                                        <option value="1h">1 Jam Terakhir</option>
+                                        <option value="6h">6 Jam Terakhir</option>
+                                        <option value="24h">24 Jam Terakhir</option>
+                                        <option value="7d">7 Hari Terakhir</option>
+                                    </select>
+                                    <button class="chart-export-btn">
+                                        <i class="fas fa-download"></i> Export
+                                    </button>
                                 </div>
                             </div>
                             <canvas id="sensorChart"></canvas>
@@ -228,6 +201,7 @@
                     </div>
 
                     <div class="control-grid">
+                        <!-- Roof Control -->
                         <div class="control-card">
                             <div class="control-header">
                                 <i class="fas fa-home control-icon"></i>
@@ -235,7 +209,7 @@
                             </div>
                             <div class="control-body">
                                 <div class="control-status">
-                                    <div class="status-indicator closed">
+                                    <div class="status-indicator closed" id="roof-control-status">
                                         <i class="fas fa-door-closed"></i>
                                         <span>Status: Tertutup</span>
                                     </div>
@@ -253,20 +227,21 @@
                                 <div class="control-toggle">
                                     <label class="toggle-label">Mode Otomatis</label>
                                     <label class="toggle-switch">
-                                        <input type="checkbox" checked>
+                                        <input type="checkbox" id="auto-roof-toggle" checked>
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Ventilation Control -->
                         <div class="control-card">
                             <div class="control-header">
                                 <i class="fas fa-fan control-icon"></i>
                                 <h3>Kontrol Ventilasi</h3>
                             </div>
                             <div class="control-body">
-                                <div class="control-value">75%</div>
+                                <div class="control-value" id="ventilation-value">75%</div>
                                 <input type="range" min="0" max="100" value="75" class="control-slider" id="ventilation-slider">
                                 <div class="slider-labels">
                                     <span>Tutup</span>
@@ -276,20 +251,21 @@
                                 <div class="control-toggle">
                                     <label class="toggle-label">Aktifkan Ventilasi</label>
                                     <label class="toggle-switch">
-                                        <input type="checkbox" checked>
+                                        <input type="checkbox" id="ventilation-toggle" checked>
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Heater Control -->
                         <div class="control-card">
                             <div class="control-header">
                                 <i class="fas fa-fire control-icon"></i>
                                 <h3>Kontrol Pemanas</h3>
                             </div>
                             <div class="control-body">
-                                <div class="control-value">OFF</div>
+                                <div class="control-value" id="heater-value">OFF</div>
                                 <input type="range" min="0" max="100" value="0" class="control-slider" id="heater-slider">
                                 <div class="slider-labels">
                                     <span>OFF</span>
@@ -299,13 +275,14 @@
                                 <div class="control-toggle">
                                     <label class="toggle-label">Aktifkan Pemanas</label>
                                     <label class="toggle-switch">
-                                        <input type="checkbox">
+                                        <input type="checkbox" id="heater-toggle">
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Notification Settings -->
                         <div class="control-card">
                             <div class="control-header">
                                 <i class="fas fa-bell control-icon"></i>
@@ -361,39 +338,39 @@
                     <div class="notifications-container">
                         <!-- Notification Stats -->
                         <div class="notification-stats">
-                            <div class="stat-card">
+                            <div class="stat-card clickable" data-filter="all">
                                 <div class="stat-icon total">
                                     <i class="fas fa-envelope"></i>
                                 </div>
                                 <div class="stat-info">
-                                    <div class="stat-value">12</div>
+                                    <div class="stat-value" id="total-notifications">12</div>
                                     <div class="stat-label">Total Notifikasi</div>
                                 </div>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card clickable" data-filter="unread">
                                 <div class="stat-icon unread">
                                     <i class="fas fa-bell"></i>
                                 </div>
                                 <div class="stat-info">
-                                    <div class="stat-value">3</div>
+                                    <div class="stat-value" id="unread-notifications">3</div>
                                     <div class="stat-label">Belum Dibaca</div>
                                 </div>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card clickable" data-filter="warning">
                                 <div class="stat-icon warning">
                                     <i class="fas fa-exclamation-triangle"></i>
                                 </div>
                                 <div class="stat-info">
-                                    <div class="stat-value">2</div>
+                                    <div class="stat-value" id="warning-notifications">2</div>
                                     <div class="stat-label">Peringatan</div>
                                 </div>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card clickable" data-filter="error">
                                 <div class="stat-icon error">
                                     <i class="fas fa-times-circle"></i>
                                 </div>
                                 <div class="stat-info">
-                                    <div class="stat-value">1</div>
+                                    <div class="stat-value" id="error-notifications">1</div>
                                     <div class="stat-label">Error</div>
                                 </div>
                             </div>
@@ -401,11 +378,11 @@
 
                         <!-- Notification Actions -->
                         <div class="notification-actions">
-                            <button class="action-btn primary" onclick="markAllAsRead()">
+                            <button class="action-btn primary" id="mark-all-read-btn">
                                 <i class="fas fa-check-double"></i>
                                 Tandai Semua Dibaca
                             </button>
-                            <button class="action-btn" onclick="clearAllNotifications()">
+                            <button class="action-btn" id="clear-all-btn">
                                 <i class="fas fa-trash"></i>
                                 Hapus Semua
                             </button>
@@ -421,101 +398,83 @@
                         </div>
 
                         <!-- Notifications List -->
-                        <div class="notifications-list">
-                            <div class="notification-item unread">
-                                <div class="notification-icon warning">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                </div>
-                                <div class="notification-content">
-                                    <div class="notification-message">Sensor hujan mendeteksi curah hujan 5mm - Atap ditutup otomatis</div>
-                                    <div class="notification-time">5 menit yang lalu</div>
-                                </div>
-                                <div class="notification-actions">
-                                    <button class="icon-btn mark-read">
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                    <button class="icon-btn delete">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="notifications-list" id="notifications-list-full">
+                            <!-- Notifications will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
 
-                            <div class="notification-item">
-                                <div class="notification-icon info">
-                                    <i class="fas fa-info-circle"></i>
-                                </div>
-                                <div class="notification-content">
-                                    <div class="notification-message">Level gabah mencapai 75% - Sistem beroperasi normal</div>
-                                    <div class="notification-time">1 jam yang lalu</div>
-                                </div>
-                                <div class="notification-actions">
-                                    <button class="icon-btn mark-read">
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                    <button class="icon-btn delete">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
+                <!-- Logs Page -->
+                <div id="logs-page" class="page">
+                    <div class="page-header">
+                        <h2><i class="fas fa-history"></i> Riwayat Sistem</h2>
+                        <p>Log aktivitas dan riwayat sistem pengeringan</p>
+                    </div>
 
-                            <div class="notification-item unread error">
-                                <div class="notification-icon error">
-                                    <i class="fas fa-times-circle"></i>
+                    <div class="logs-container">
+                        <!-- Log Statistics -->
+                        <div class="log-stats">
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-door-open"></i>
                                 </div>
-                                <div class="notification-content">
-                                    <div class="notification-message">Gagal terhubung ke sensor suhu - Periksa koneksi hardware</div>
-                                    <div class="notification-time">2 jam yang lalu</div>
-                                </div>
-                                <div class="notification-actions">
-                                    <button class="icon-btn mark-read">
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                    <button class="icon-btn delete">
-                                        <i class="fas fa-times"></i>
-                                    </button>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="roof-opens">0</div>
+                                    <div class="stat-label">Atap Dibuka</div>
                                 </div>
                             </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-door-closed"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="roof-closes">0</div>
+                                    <div class="stat-label">Atap Ditutup</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-cloud-rain"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="rain-events">0</div>
+                                    <div class="stat-label">Kejadian Hujan</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="auto-actions">0</div>
+                                    <div class="stat-label">Aksi Otomatis</div>
+                                </div>
+                            </div>
+                        </div>
 
-                            <div class="notification-item">
-                                <div class="notification-icon success">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
-                                <div class="notification-content">
-                                    <div class="notification-message">Sistem ventilasi dinaikkan ke 75% karena kelembapan tinggi</div>
-                                    <div class="notification-time">3 jam yang lalu</div>
-                                </div>
-                                <div class="notification-actions">
-                                    <button class="icon-btn mark-read">
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                    <button class="icon-btn delete">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
+                        <!-- Log Tabs -->
+                        <div class="log-tabs">
+                            <button class="log-tab active" data-filter="all">Semua Aktivitas</button>
+                            <button class="log-tab" data-filter="roof">Atap</button>
+                            <button class="log-tab" data-filter="system">Sistem</button>
+                            <button class="log-tab" data-filter="rain">Hujan</button>
+                            <button class="log-tab" data-filter="sensor">Sensor</button>
+                        </div>
 
-                            <div class="notification-item unread">
-                                <div class="notification-icon warning">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                </div>
-                                <div class="notification-content">
-                                    <div class="notification-message">Peringatan: Suhu mencapai 38°C - Ventilasi ditingkatkan</div>
-                                    <div class="notification-time">5 jam yang lalu</div>
-                                </div>
-                                <div class="notification-actions">
-                                    <button class="icon-btn mark-read">
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                    <button class="icon-btn delete">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
+                        <!-- Log List -->
+                        <div class="log-list" id="log-items">
+                            <!-- Log items will be populated by JavaScript -->
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Quick Notification Badge -->
+    <div id="quick-notification-badge" class="quick-notification-badge hidden">
+        🔔
+        <div class="badge-count">0</div>
     </div>
 
     <script src="js/script.js"></script>
