@@ -3,7 +3,6 @@
 class SmartDryApp {
     constructor() {
         this.sensorChart = null;
-        this.websocket = null;
         this.isConnected = false;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
@@ -29,7 +28,6 @@ class SmartDryApp {
 
     init() {
         this.initializeChart();
-        this.initWebSocket();
         this.setupEventListeners();
         this.setupNavigation();
         this.setupControlListeners();
@@ -47,6 +45,80 @@ class SmartDryApp {
         // Update time every second
         setInterval(() => this.updateCurrentTime(), 1000);
         this.updateCurrentTime();
+    }
+
+    async fetchSensorData() {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}?action=latest_data`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            
+            const data = await response.json();
+            
+            if (data && Object.keys(data).length > 0) {
+                this.updateSensorData(data);
+            }
+        } catch (error) {
+            console.error('Error fetching sensor data:', error);
+            this.updateConnectionStatus(false, 'Connection Error');
+        }
+    }
+
+    async fetchNotifications(filter = 'all') {
+        try {
+            const response = await fetch(
+                `${this.apiBaseUrl}?action=notifications&filter=${filter}&limit=50`
+            );
+            if (!response.ok) throw new Error('Network response was not ok');
+            
+            const notifications = await response.json();
+            
+            if (Array.isArray(notifications)) {
+                this.notifications = notifications;
+                this.applyNotificationFilter(this.currentFilter);
+                this.updateNotificationStats();
+                this.updateQuickNotificationBadge();
+            }
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    }
+
+    async fetchLogs(filter = 'all') {
+        try {
+            const response = await fetch(
+                `${this.apiBaseUrl}?action=logs&filter=${filter}&limit=50`
+            );
+            if (!response.ok) throw new Error('Network response was not ok');
+            
+            const logs = await response.json();
+            
+            if (Array.isArray(logs)) {
+                this.logHistory = logs;
+                this.applyLogFilter();
+                this.updateLogStatistics();
+            }
+        } catch (error) {
+            console.error('Error fetching logs:', error);
+        }
+    }
+
+    initDataPolling() {
+        console.log("Initializing data polling...");
+        
+        // Poll data setiap 5 detik
+        setInterval(() => {
+            this.fetchSensorData();
+            this.fetchNotifications(this.currentFilter);
+            
+            if (this.currentPage === 'logs') {
+                this.fetchLogs(this.currentLogTab);
+            }
+        }, 5000);
+        
+        // Load initial data
+        this.fetchSensorData();
+        this.fetchNotifications();
+        this.fetchLogs();
     }
 
     updateCurrentTime() {
@@ -1216,17 +1288,6 @@ class SmartDryApp {
         document.getElementById('light-slider').value = currentData.light_intensity;
     }
 
-    getCurrentSensorData() {
-        // Return current sensor data (in real app, this would come from WebSocket)
-        return {
-            temperature: 36,
-            humidity: 85,
-            light_intensity: 50,
-            rainfall: 10,
-            distance: 55
-        };
-    }
-
     setupControlListeners() {
         // Temperature control
         const tempSlider = document.getElementById('temperature-slider');
@@ -1408,58 +1469,10 @@ class SmartDryApp {
         }
     }
 
-    initWebSocket() {
-        this.ws = new WebSocket("ws://localhost:8000");
-
-        this.ws.onopen = () => {
-            this.updateConnectionStatus(true, "Connected");
-            console.log("WebSocket connected successfully");
-        };
-
-        this.ws.onclose = () => {
-            this.updateConnectionStatus(false, "Disconnected");
-            setTimeout(() => this.initWebSocket(), 3000);
-        };
-
-        this.ws.onerror = (error) => {
-            this.updateConnectionStatus(false, "Connection Error");
-            console.error("WebSocket error:", error);
-        };
-
-        this.ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                console.log("Received data:", data);
-                
-                // ✅ PROSES DATA DARI SERVER
-                this.handleWebSocketData(data);
-                
-            } catch (error) {
-                console.error("Error parsing WebSocket data:", error);
-            }
-        };
-    }
-
-    // ✅ METHOD BARU: Handle data dari WebSocket
-    handleWebSocketData(data) {
-        switch (data.type) {
-            case 'sensor_update':
-                this.updateSensorData(data.data);
-                break;
-            case 'notifications':
-                this.handleNotifications(data.notifications);
-                break;
-            case 'initial_data':
-                this.handleInitialData(data);
-                break;
-            default:
-                console.log('Unknown message type:', data.type);
-        }
-    }
-
     // ✅ METHOD: Update sensor data dari database
     updateSensorData(sensorData) {
-        // Update this.sensorData dengan data dari database
+        if (!sensorData) return;
+        
         this.sensorData = {
             rainfall: { 
                 value: sensorData.rainfall || 0, 
@@ -1488,10 +1501,23 @@ class SmartDryApp {
             }
         };
         
-        // Update UI
+        // Update roof status dari database
+        if (sensorData.roof_status) {
+            this.roofStatus = sensorData.roof_status;
+            this.updateRoofStatus();
+        }
+        
+        // Update auto mode
+        if (sensorData.auto_mode !== undefined) {
+            this.autoMode = Boolean(sensorData.auto_mode);
+            this.updateOperationMode();
+        }
+        
         this.updateSensorCards();
-        this.updateChartWithRealData(sensorData);
+        this.updateConnectionStatus(true, 'Data Updated');
     }
+
+    
 
     // ✅ METHOD: Hitung level gabah dari distance sensor
     calculateLevel(distance) {
@@ -1512,7 +1538,7 @@ class SmartDryApp {
         };
         
         const threshold = thresholds[sensorType];
-        if (!threshold) return 'normal';
+        if (!threshold || value === null || value === undefined) return 'normal';
         
         if (value >= threshold.critical) return 'critical';
         if (value >= threshold.warning) return 'warning';
