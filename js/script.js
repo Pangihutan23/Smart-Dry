@@ -22,6 +22,7 @@ class SmartDryApp {
         this.currentFilter = 'all';
         this.currentLogTab = 'all';
         this.roofStatus = 'closed'; // closed, open, moving
+        this.apiBaseUrl = 'api.php';
         
         this.init();
     }
@@ -38,6 +39,7 @@ class SmartDryApp {
         this.setupHashNavigation();
         this.setupNotificationClickHandlers();
         this.loadSampleData();
+        this.initDataPolling();
         
         this.updateConnectionStatus(false, 'Connecting...');
         this.handleHashChange();
@@ -1407,14 +1409,117 @@ class SmartDryApp {
     }
 
     initWebSocket() {
-        // WebSocket implementation would go here
-        console.log('WebSocket initialization placeholder');
-        
-        // Simulate connection after a delay
-        setTimeout(() => {
-            this.updateConnectionStatus(true, 'Connected');
-        }, 2000);
+        this.ws = new WebSocket("ws://localhost:8000");
+
+        this.ws.onopen = () => {
+            this.updateConnectionStatus(true, "Connected");
+            console.log("WebSocket connected successfully");
+        };
+
+        this.ws.onclose = () => {
+            this.updateConnectionStatus(false, "Disconnected");
+            setTimeout(() => this.initWebSocket(), 3000);
+        };
+
+        this.ws.onerror = (error) => {
+            this.updateConnectionStatus(false, "Connection Error");
+            console.error("WebSocket error:", error);
+        };
+
+        this.ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log("Received data:", data);
+                
+                // ✅ PROSES DATA DARI SERVER
+                this.handleWebSocketData(data);
+                
+            } catch (error) {
+                console.error("Error parsing WebSocket data:", error);
+            }
+        };
     }
+
+    // ✅ METHOD BARU: Handle data dari WebSocket
+    handleWebSocketData(data) {
+        switch (data.type) {
+            case 'sensor_update':
+                this.updateSensorData(data.data);
+                break;
+            case 'notifications':
+                this.handleNotifications(data.notifications);
+                break;
+            case 'initial_data':
+                this.handleInitialData(data);
+                break;
+            default:
+                console.log('Unknown message type:', data.type);
+        }
+    }
+
+    // ✅ METHOD: Update sensor data dari database
+    updateSensorData(sensorData) {
+        // Update this.sensorData dengan data dari database
+        this.sensorData = {
+            rainfall: { 
+                value: sensorData.rainfall || 0, 
+                unit: 'mm', 
+                status: this.getSensorStatus('rainfall', sensorData.rainfall)
+            },
+            light: { 
+                value: sensorData.light_intensity || 0, 
+                unit: 'lux', 
+                status: this.getSensorStatus('light', sensorData.light_intensity)
+            },
+            temperature: { 
+                value: sensorData.temperature || 0, 
+                unit: '°C', 
+                status: this.getSensorStatus('temperature', sensorData.temperature)
+            },
+            humidity: { 
+                value: sensorData.humidity || 0, 
+                unit: '%', 
+                status: this.getSensorStatus('humidity', sensorData.humidity)
+            },
+            level: { 
+                value: sensorData.distance ? this.calculateLevel(sensorData.distance) : 0, 
+                unit: '%', 
+                status: this.getSensorStatus('level', sensorData.distance)
+            }
+        };
+        
+        // Update UI
+        this.updateSensorCards();
+        this.updateChartWithRealData(sensorData);
+    }
+
+    // ✅ METHOD: Hitung level gabah dari distance sensor
+    calculateLevel(distance) {
+        // Asumsi: distance 0-100 cm, level 0-100%
+        const maxDistance = 100;
+        const level = Math.max(0, 100 - (distance / maxDistance * 100));
+        return Math.round(level);
+    }
+
+    // ✅ METHOD: Tentukan status sensor berdasarkan nilai
+    getSensorStatus(sensorType, value) {
+        const thresholds = {
+            temperature: { warning: 35, critical: 40 },
+            humidity: { warning: 80, critical: 90 },
+            light: { warning: 100, critical: 50 },
+            rainfall: { warning: 5, critical: 10 },
+            level: { warning: 20, critical: 10 }
+        };
+        
+        const threshold = thresholds[sensorType];
+        if (!threshold) return 'normal';
+        
+        if (value >= threshold.critical) return 'critical';
+        if (value >= threshold.warning) return 'warning';
+        return 'normal';
+    }
+
+
 
     updateConnectionStatus(connected, message) {
         const statusDot = document.getElementById('status-dot');

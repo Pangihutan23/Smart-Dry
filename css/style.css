@@ -144,6 +144,29 @@ body {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.logout-btn {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.btn-logout {
+    display: inline-block;
+    padding: 8px 12px;
+    background-color: #e74c3c;
+    color: white;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.btn-logout i {
+    margin-right: 5px;
+}
+
+.btn-logout:hover {
+    background-color: #c0392b;
+}
+
 .user-info {
     display: flex;
     align-items: center;
