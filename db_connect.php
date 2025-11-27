@@ -3,7 +3,7 @@ $host = "127.0.0.1";
 $username = "root";
 $password = "";
 $database = "smartdry_agro";
-$port = 3307; // ganti sesuai port MySQL kamu
+$port = 3306; // ganti sesuai port MySQL kamu
 
 $db = new mysqli($host, $username, $password, $database, $port);
 

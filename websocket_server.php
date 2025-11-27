@@ -205,7 +205,7 @@ class SensorWebSocket implements MessageComponentInterface {
 }
 
 // Check if required port is available
-$port = 8091;
+$port = 8000;
 $address = '0.0.0.0'; // Listen on all interfaces
 
 echo "Starting SmartDry Agro WebSocket Server...\n";
@@ -235,6 +235,6 @@ try {
     echo "3. Another server is running on the same port\n";
     
     // Suggest alternative port
-    echo "Try running on different port: php websocket_server.php 8081\n";
+    echo "Try running on different port: php websocket_server.php 8000\n";
 }
 ?>

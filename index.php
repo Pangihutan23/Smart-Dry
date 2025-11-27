@@ -1,3 +1,11 @@
+<?php
+session_start();
+if (!isset($_SESSION['username'])) {
+    header("Location: login.php"); // kalau belum login → ke login
+    exit();
+}
+?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -45,14 +53,20 @@
             <div class="sidebar-footer">
                 <div class="user-info">
                     <div class="user-avatar">
-                        <i class="fas fa-user-circle"></i>
+                         <i class="fas fa-user-circle"></i>
                     </div>
                     <div class="user-details">
                         <div class="user-name">Administrator</div>
                         <div class="user-role">System Admin</div>
                     </div>
                 </div>
+                <div class="logout-btn">
+                    <a href="logout.php" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
             </div>
+
         </div>
 
         <!-- Main Content -->
