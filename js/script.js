@@ -20,31 +20,63 @@ class SmartDryApp {
         this.currentPage = 'dashboard';
         this.currentFilter = 'all';
         this.currentLogTab = 'all';
-        this.roofStatus = 'closed'; // closed, open, moving
+        this.roofStatus = 'closed';
         this.apiBaseUrl = 'api.php';
+
+        this.sensorData = {
+            rainfall: { value: 0.0, unit: 'mm', status: 'normal' },
+            light: { value: 850, unit: 'lux', status: 'normal' },
+            temperature: { value: 32, unit: '°C', status: 'normal' },
+            humidity: { value: 65, unit: '%', status: 'normal' },
+            level: { value: 75, unit: '%', status: 'warning' }
+        };
         
         this.init();
+        this.initializeChart();
     }
 
     init() {
-        this.initializeChart();
-        this.setupEventListeners();
-        this.setupNavigation();
-        this.setupControlListeners();
-        this.setupFilterListeners();
-        this.setupLogTabs();
-        this.setupQuickActions();
-        this.setupHashNavigation();
-        this.setupNotificationClickHandlers();
-        this.loadSampleData();
-        this.initDataPolling();
-        
-        this.updateConnectionStatus(false, 'Connecting...');
-        this.handleHashChange();
-        
-        // Update time every second
-        setInterval(() => this.updateCurrentTime(), 1000);
-        this.updateCurrentTime();
+        console.log("Initializing SmartDry App...");
+        try {
+            this.setupEventListeners();
+            this.setupNavigation();
+            this.setupControlListeners();
+            this.setupFilterListeners();
+            this.setupLogTabs();
+            this.setupQuickActions();
+            this.setupHashNavigation();
+            this.setupNotificationClickHandlers();
+            this.loadSampleData();
+            this.initDataPolling();
+            
+            this.updateConnectionStatus(false, 'Connecting...');
+            this.handleHashChange();
+            
+            // Update time every second
+            setInterval(() => this.updateCurrentTime(), 1000);
+            this.updateCurrentTime();
+            
+            console.log("SmartDry App initialized successfully");
+        } catch (error) {
+            console.error("Error initializing app:", error);
+        }
+    }
+
+    getCurrentSensorData() {
+        return {
+            temperature: this.sensorData.temperature.value,
+            humidity: this.sensorData.humidity.value,
+            light_intensity: this.sensorData.light.value
+        };
+    }
+
+    updateOperationMode() {
+        const modeElement = document.getElementById('operation-mode');
+        if (modeElement) {
+            const modeText = this.autoMode ? 'Otomatis' : 'Manual';
+            modeElement.textContent = modeText;
+            modeElement.className = `status-value ${this.autoMode ? 'auto' : 'active'}`;
+        }
     }
 
     async fetchSensorData() {
@@ -147,19 +179,23 @@ class SmartDryApp {
     }
 
     handleHashChange() {
-        const hash = window.location.hash.substring(1); // Remove # symbol
+        const hash = window.location.hash.substring(1);
         const validPages = ['dashboard', 'notifications', 'control', 'logs'];
         
-        if (validPages.includes(hash)) {
+        if (hash && validPages.includes(hash)) {
             this.showPage(hash);
             
             // Update active nav item
             document.querySelectorAll('.nav-item').forEach(nav => {
                 nav.classList.remove('active');
-                if (nav.getAttribute('href') === `#${hash}`) {
+                const navHref = nav.getAttribute('href');
+                if (navHref && navHref.substring(1) === hash) {
                     nav.classList.add('active');
                 }
             });
+        } else {
+            // Default to dashboard
+            this.showPage('dashboard');
         }
     }
 
@@ -509,50 +545,55 @@ class SmartDryApp {
     }
 
     setupNavigation() {
-        const navItems = document.querySelectorAll('.nav-item');
-        
-        navItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                const page = item.dataset.page;
-                
-                // Add click animation
-                item.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    item.style.transform = '';
-                }, 150);
-                
-                this.showPage(page);
-                
-                // Update active nav item
-                navItems.forEach(nav => nav.classList.remove('active'));
-                item.classList.add('active');
+        try {
+            const navItems = document.querySelectorAll('.nav-item');
+            
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const page = item.dataset.page || item.getAttribute('href')?.substring(1);
+                    
+                    if (page) {
+                        // Add click animation
+                        item.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            item.style.transform = '';
+                        }, 150);
+                        
+                        this.showPage(page);
+                        
+                        // Update active nav item
+                        navItems.forEach(nav => nav.classList.remove('active'));
+                        item.classList.add('active');
+                    }
+                });
             });
-        });
+        } catch (error) {
+            console.error('Error setting up navigation:', error);
+        }
     }
 
     showPage(page) {
-        // Hide all pages with fade out
+        console.log(`Showing page: ${page}`);
+        
+        // Hide all pages
         document.querySelectorAll('.page').forEach(p => {
-            if (p.classList.contains('active')) {
-                p.style.animation = 'slideInUp 0.5s ease reverse';
-                setTimeout(() => {
-                    p.classList.remove('active');
-                    p.style.animation = '';
-                }, 250);
-            }
+            p.classList.remove('active');
         });
         
-        // Show selected page with fade in
-        setTimeout(() => {
-            const targetPage = document.getElementById(`${page}-page`);
-            if (targetPage) {
-                targetPage.classList.add('active');
-                
-                // Update URL hash
-                window.location.hash = page;
-                
-                // Load page-specific content
+        // Show selected page
+        const targetPage = document.getElementById(`${page}-page`);
+        if (targetPage) {
+            targetPage.classList.add('active');
+            
+            // Update URL hash
+            window.location.hash = page;
+            
+            // Update current page
+            this.currentPage = page;
+            
+            // Load page-specific content
+            setTimeout(() => {
                 if (page === 'notifications') {
                     this.loadNotifications();
                     this.applyNotificationFilter();
@@ -565,11 +606,12 @@ class SmartDryApp {
                     this.applyLogFilter();
                     this.updateLogStatistics();
                 }
-            }
-        }, 250);
-        
-        this.currentPage = page;
+            }, 100);
+        } else {
+            console.error(`Page ${page} not found`);
+        }
     }
+
 
     setupLogTabs() {
         const logTabs = document.querySelectorAll('.log-tab');
@@ -724,40 +766,76 @@ class SmartDryApp {
     }
 
     // Method untuk mengontrol atap
-    controlRoof(action) {
-        this.showToast(`Mengirim perintah: ${action === 'open' ? 'Buka Atap' : 'Tutup Atap'}`, 'info');
-        
-        // Simulate roof movement
+        // Method untuk mengontrol atap (TERHUBUNG KE API)
+    async controlRoof(action) {
+        const actionLabel = action === 'open' ? 'Buka Atap' : 'Tutup Atap';
+        this.showToast(`Mengirim perintah: ${actionLabel}`, 'info');
+
+        // Status sementara: atap sedang bergerak
         this.roofStatus = 'moving';
         this.updateRoofStatus();
-        
-        // Add to log history
-        const newLog = {
-            id: 'log' + Date.now(),
-            type: 'roof',
-            action: action,
-            message: action === 'open' ? 
-                'Atap dibuka manual oleh operator' : 
-                'Atap ditutup manual oleh operator',
-            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-            status: action
-        };
-        
-        this.logHistory.unshift(newLog);
-        this.applyLogFilter();
-        this.updateRoofStatus();
-        this.updateLogStatistics();
-        
-        // Simulate completion after 3 seconds
-        setTimeout(() => {
-            this.roofStatus = action;
-            this.updateRoofStatus();
+
+        try {
+            const response = await fetch(
+                `${this.apiBaseUrl}?action=set_command&command=${encodeURIComponent(action)}&device_id=ESP8266_SmartDry`
+            );
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || 'Gagal mengirim perintah');
+            }
+
+            // Catat di log
+            this.addLog(
+                'roof',
+                action,
+                action === 'open'
+                    ? 'Atap dibuka manual oleh operator'
+                    : 'Atap ditutup manual oleh operator',
+                action
+            );
+
             this.showToast(
-                action === 'open' ? 'Atap berhasil terbuka' : 'Atap berhasil tertutup', 
+                `Perintah ${actionLabel} dikirim ke perangkat`,
                 'success'
             );
-        }, 3000);
+            // Status akhir akan di-update oleh data sensor (roof_status dari API)
+        } catch (error) {
+            console.error('Gagal mengirim perintah atap:', error);
+            this.showToast('Gagal mengirim perintah ke perangkat', 'error');
+            // Kembalikan tampilan status dari data terakhir
+            this.updateRoofStatus();
+        }
     }
+
+    async sendAutoModeCommand(cmd) {
+        try {
+            const response = await fetch(
+                `${this.apiBaseUrl}?action=set_command&command=${encodeURIComponent(cmd)}&device_id=ESP8266_SmartDry`
+            );
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || 'Gagal mengirim perintah mode otomatis');
+            }
+
+            const isEnabled = (cmd === 'auto_on');
+            this.autoMode = isEnabled;
+            this.updateOperationMode();
+
+            this.addLog(
+                'system',
+                'auto_mode',
+                `Mode otomatis atap ${isEnabled ? 'diaktifkan' : 'dinonaktifkan'}`,
+                cmd
+            );
+        } catch (error) {
+            console.error('Gagal mengirim perintah mode otomatis:', error);
+            this.showToast('Gagal mengubah mode otomatis atap', 'error');
+        }
+    }
+
+
 
     // Enhanced notification methods dengan priority
     addNotification(message, type = 'info', priority = 'medium', timestamp = null, isRead = false, clickable = true) {
@@ -1264,8 +1342,55 @@ class SmartDryApp {
     }
 
     loadControlPanel() {
-        // Initialize control panel with current values
-        this.updateControlPanel();
+        console.log('Loading control panel...');
+        try {
+            const currentData = this.getCurrentSensorData();
+            
+            // Update temperature control
+            const tempValue = document.getElementById('temperature-value');
+            const tempSlider = document.getElementById('temperature-slider');
+            if (tempValue && tempSlider) {
+                tempValue.textContent = `${currentData.temperature}°C`;
+                tempSlider.value = currentData.temperature;
+            }
+            
+            // Update humidity control
+            const humidityValue = document.getElementById('humidity-value');
+            const humiditySlider = document.getElementById('humidity-slider');
+            if (humidityValue && humiditySlider) {
+                humidityValue.textContent = `${currentData.humidity}%`;
+                humiditySlider.value = currentData.humidity;
+            }
+            
+            // Update light control
+            const lightValue = document.getElementById('light-value-control');
+            const lightSlider = document.getElementById('light-slider');
+            if (lightValue && lightSlider) {
+                lightValue.textContent = `${currentData.light_intensity} lux`;
+                lightSlider.value = currentData.light_intensity;
+            }
+            
+            // Update ventilation control
+            const ventilationValue = document.getElementById('ventilation-value');
+            const ventilationSlider = document.getElementById('ventilation-slider');
+            if (ventilationValue && ventilationSlider) {
+                ventilationSlider.value = 50;
+                ventilationValue.textContent = '50%';
+            }
+            
+            // Update heater control
+            const heaterValue = document.getElementById('heater-value');
+            const heaterSlider = document.getElementById('heater-slider');
+            if (heaterValue && heaterSlider) {
+                heaterSlider.value = 0;
+                heaterValue.textContent = 'OFF';
+                heaterValue.style.color = '#F44336';
+            }
+            
+            console.log('Control panel loaded');
+        } catch (error) {
+            console.error('Error loading control panel:', error);
+        }
     }
 
     updateControlPanel() {
@@ -1356,15 +1481,35 @@ class SmartDryApp {
                 );
 
                 // Special handling for auto roof toggle
+                // Special handling for auto roof toggle
                 if (controlName === 'auto-roof') {
                     const modeElement = document.getElementById('operation-mode');
                     if (modeElement) {
                         modeElement.textContent = isEnabled ? 'Otomatis' : 'Manual';
                         modeElement.className = `status-value ${isEnabled ? 'auto' : 'active'}`;
                     }
+
+                    // Kirim perintah mode otomatis ke backend
+                    const cmd = isEnabled ? 'auto_on' : 'auto_off';
+                    this.sendAutoModeCommand(cmd);
                 }
             });
         });
+
+                // Kontrol atap dari card utama
+        const openRoofBtn = document.getElementById('open-roof-btn');
+        if (openRoofBtn) {
+            openRoofBtn.addEventListener('click', () => {
+                this.controlRoof('open');
+            });
+        }
+
+        const closeRoofBtn = document.getElementById('close-roof-btn');
+        if (closeRoofBtn) {
+            closeRoofBtn.addEventListener('click', () => {
+                this.controlRoof('close');
+            });
+        }
     }
 
     getControlLabel(controlName) {
@@ -1381,70 +1526,85 @@ class SmartDryApp {
     }
 
     initializeChart() {
-        const ctx = document.getElementById('sensorChart');
-        if (!ctx) return;
+        try {
+            const ctx = document.getElementById('sensorChart');
+            if (!ctx) {
+                console.warn('Chart element not found');
+                return;
+            }
 
-        // Generate sample data for the chart
-        this.generateChartData();
+            // Generate sample data for the chart
+            this.generateChartData();
 
-        this.sensorChart = new Chart(ctx.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: this.chartData.labels,
-                datasets: [
-                    {
-                        label: 'Suhu (°C)',
-                        data: this.chartData.temperatures,
-                        borderColor: '#ff6384',
-                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true
-                    },
-                    {
-                        label: 'Cahaya (lux)',
-                        data: this.chartData.lightIntensities,
-                        borderColor: '#36a2eb',
-                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
+            // Hancurkan chart yang ada jika ada
+            if (this.sensorChart) {
+                this.sensorChart.destroy();
+            }
+
+            this.sensorChart = new Chart(ctx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: this.chartData.labels,
+                    datasets: [
+                        {
+                            label: 'Suhu (°C)',
+                            data: this.chartData.temperatures,
+                            borderColor: '#ff6384',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Cahaya (lux)',
+                            data: this.chartData.lightIntensities,
+                            borderColor: '#36a2eb',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
                         }
-                    },
-                    x: {
-                        grid: {
-                            color: 'rgba(0,0,0,0.1)'
-                        }
-                    }
+                    ]
                 },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                    },
-                    tooltip: {
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
                         mode: 'index',
-                        intersect: false
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
                     }
                 }
-            }
-        });
+            });
+            
+            console.log('Chart initialized successfully');
+        } catch (error) {
+            console.error('Error initializing chart:', error);
+        }
     }
+
 
     generateChartData() {
         const now = new Date();
@@ -1469,35 +1629,104 @@ class SmartDryApp {
         }
     }
 
-    // ✅ METHOD: Update sensor data dari database
+    // ===============================
+    // INISIALISASI CHART
+    // ===============================
+    initializeChart() {
+        const ctx = document.getElementById('sensorChart').getContext('2d');
+
+        this.sensorChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // waktu
+                datasets: [
+                    {
+                        label: 'Suhu (°C)',
+                        data: [],
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        fill: false,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Intensitas Cahaya (Lux)',
+                        data: [],
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        fill: false,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                animation: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+        // ===============================
+    // UPDATE CHART
+    // ===============================
+    updateChart() {
+        if (!this.sensorChart) return;
+
+        const now = new Date().toLocaleTimeString();
+
+        this.sensorChart.data.labels.push(now);
+        this.sensorChart.data.datasets[0].data.push(this.sensorData.temperature.value);
+        this.sensorChart.data.datasets[1].data.push(this.sensorData.light.value);
+
+        // batasi max 50 data agar chart tidak berat
+        if (this.sensorChart.data.labels.length > 50) {
+            this.sensorChart.data.labels.shift();
+            this.sensorChart.data.datasets[0].data.shift();
+            this.sensorChart.data.datasets[1].data.shift();
+        }
+
+        this.sensorChart.update();
+    }
+
+
+
+        // ✅ METHOD: Update sensor data dari database
     updateSensorData(sensorData) {
-        if (!sensorData) return;
+        if (!sensorData) {
+            console.warn('No sensor data provided');
+            return;    
+        }
         
+        console.log('Updating sensor data:', sensorData);
+        
+        // Pastikan semua nilai ada
         this.sensorData = {
             rainfall: { 
-                value: sensorData.rainfall || 0, 
+                value: sensorData.rainfall ?? 0, 
                 unit: 'mm', 
-                status: this.getSensorStatus('rainfall', sensorData.rainfall)
+                status: this.getSensorStatus('rainfall', sensorData.rainfall || 0)
             },
             light: { 
-                value: sensorData.light_intensity || 0, 
+                value: sensorData.light_intensity ?? sensorData.light ?? 0, 
                 unit: 'lux', 
-                status: this.getSensorStatus('light', sensorData.light_intensity)
+                status: this.getSensorStatus('light', sensorData.light_intensity || sensorData.light || 0)
             },
             temperature: { 
-                value: sensorData.temperature || 0, 
+                value: sensorData.temperature ?? 30, 
                 unit: '°C', 
-                status: this.getSensorStatus('temperature', sensorData.temperature)
+                status: this.getSensorStatus('temperature', sensorData.temperature || 30)
             },
             humidity: { 
-                value: sensorData.humidity || 0, 
+                value: sensorData.humidity ?? 65, 
                 unit: '%', 
-                status: this.getSensorStatus('humidity', sensorData.humidity)
+                status: this.getSensorStatus('humidity', sensorData.humidity || 65)
             },
             level: { 
-                value: sensorData.distance ? this.calculateLevel(sensorData.distance) : 0, 
+                value: sensorData.distance !== undefined 
+                        ? this.calculateLevel(sensorData.distance)
+                        : 75,
                 unit: '%', 
-                status: this.getSensorStatus('level', sensorData.distance)
+                status: this.getSensorStatus('level', sensorData.distance || 0)
             }
         };
         
@@ -1514,10 +1743,9 @@ class SmartDryApp {
         }
         
         this.updateSensorCards();
-        this.updateConnectionStatus(true, 'Data Updated');
+        this.updateConnectionStatus(true, 'Terhubung');
+        this.updateChart();
     }
-
-    
 
     // ✅ METHOD: Hitung level gabah dari distance sensor
     calculateLevel(distance) {
@@ -1545,8 +1773,6 @@ class SmartDryApp {
         return 'normal';
     }
 
-
-
     updateConnectionStatus(connected, message) {
         const statusDot = document.getElementById('status-dot');
         const statusText = document.getElementById('status-text');
@@ -1565,13 +1791,85 @@ class SmartDryApp {
     }
 
     setupEventListeners() {
-        // Additional event listeners can be added here
+        console.log('Setting up event listeners...');
+        
+        // Check for toast container
+        const toastContainer = document.querySelector('.toast-container');
+        if (!toastContainer) {
+            const container = document.createElement('div');
+            container.className = 'toast-container';
+            container.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                z-index: 9999;
+            `;
+            document.body.appendChild(container);
+        }
+        
+        // Setup window resize for chart
+        window.addEventListener('resize', () => {
+            if (this.sensorChart) {
+                setTimeout(() => {
+                    this.sensorChart.resize();
+                }, 300);
+            }
+        });
+        
+        // Setup keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+R untuk refresh
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                this.refreshSensors();
+            }
+            
+            // Ctrl+N untuk notifikasi
+            if (e.ctrlKey && e.key === 'n') {
+                e.preventDefault();
+                this.showPage('notifications');
+            }
+        });
     }
 }
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    window.smartDryApp = new SmartDryApp();
+    console.log('DOM fully loaded, initializing app...');
+    try {
+        window.smartDryApp = new SmartDryApp();
+        console.log('App initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize app:', error);
+        // Show error to user
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #f44336;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            z-index: 99999;
+            text-align: center;
+        `;
+        errorDiv.innerHTML = `
+            <h3>⚠️ Aplikasi Error</h3>
+            <p>Gagal memuat aplikasi. Silakan refresh halaman.</p>
+            <button onclick="location.reload()" style="
+                background: white;
+                color: #f44336;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                margin-top: 10px;
+                cursor: pointer;
+            ">Refresh Halaman</button>
+        `;
+        document.body.appendChild(errorDiv);
+    }
 });
 
 // Global functions for HTML onclick handlers
@@ -1586,3 +1884,7 @@ function clearAllNotifications() {
         window.smartDryApp.clearAllNotifications();
     }
 }
+
+window.addEventListener('error', function(e) {
+    console.error('Global error:', e.error);
+});
